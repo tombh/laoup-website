@@ -50,36 +50,21 @@
 </template>
 
 <script>
+import languageEncounters from '../../static/encounters.json';
+
 export default {
   name: 'encounters',
   data: () => ({
     loading: 'Loading...',
-    languages: [],
+    languages: languageEncounters,
     current_youtube_embed: '',
     current_encounter_id: '',
     current_language: 'mandarin',
   }),
   created() {
-    this.fetchEncounters();
+    this.changeEncounter(this.languages.mandarin.encounters[0]);
   },
   methods: {
-    fetchEncounters() {
-      fetch('/static/encounters.json')
-      .then((response) => {
-        if (response.status !== 200) {
-          return;
-        }
-
-        response.json().then((data) => {
-          this.loading = 'Loaded';
-          this.languages = data;
-          this.changeEncounter(data.mandarin.encounters[0]);
-        });
-      })
-      .catch(() => {
-        this.loading = 'Error loading data';
-      });
-    },
     changeLanguage(language) {
       this.current_language = language;
     },
