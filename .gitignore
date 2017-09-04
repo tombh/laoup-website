@@ -8,4 +8,5 @@ test/unit/coverage
 
 tmp
 encounters/sub_files
-static/encounters.json
+static/css/*.map
+static/js/*.map
