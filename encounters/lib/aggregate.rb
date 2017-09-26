@@ -25,7 +25,9 @@ class Aggregate
       subs = ParseSubs.parse @file
       clean Encounters.new(subs).find
     end
-    sort
+    remove_languages_with_one_encounter
+    sort_by_number_of_encounters
+    sort_by_encounter_dates
   end
 
   def current_video_filename_parts
@@ -83,8 +85,19 @@ class Aggregate
     @encounter[:start][:text].gsub(/\(\((.*)\)\) /, '')
   end
 
-  def sort
+  def remove_languages_with_one_encounter
+    @all = @all.delete_if { |_, v| v[:encounters].length == 1 }
+  end
+
+  def sort_by_number_of_encounters
     @all = Hash[@all.sort_by { |_, v| -v[:encounters].length }]
+  end
+
+  def sort_by_encounter_dates
+    @all.each do |language, language_encounters|
+      ascending_date = language_encounters[:encounters].sort_by { |e| e[:date] }
+      @all[language][:encounters] = ascending_date.reverse
+    end
   end
 
   def save_to_disk

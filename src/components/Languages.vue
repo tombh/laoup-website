@@ -1,51 +1,75 @@
 <template>
-  <div class="wrapper">
-    <div class="main">
-      <img src="../assets/logo.png" alt="Logo" width="100" class="logo" />
-      <h1>Laoshu's Level Ups</h1>
-      <iframe
-        width="560"
-        height="315"
-        :src="current_youtube_embed"
-        frameborder="0"
-        allowfullscreen>
-      </iframe>
-      <div v-if="current_language" class="current_language">
-        <h2>{{ current_language }}</h2>
-        <ul>
-          <li v-for="encounter in languages[current_language].encounters">
-            <ul v-on:click="changeEncounter(encounter)"
-              :class="{ 'currently_viewing': encounterID(encounter) == current_encounter_id, 'encounter_synopsis': true }"
-            >
+  <div class="main">
+    <header>
+      <div class="title">
+        <img src="../assets/logo.png" alt="Logo" width="100" class="logo" />
+        <h1>Laoshu's Level Ups</h1>
+      </div>
+      <div class="iframe_wrapper">
+        <iframe
+          :src="currentYoutubeEmbed"
+          frameborder="0"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </header>
+    <div v-if="currentLanguage" class="current_language">
+      <header class="language_list">
+        <select @change="changeLanguage">
+          <option
+            v-for="(language, name) in languages"
+            :value="name"
+            :selected="name === currentLanguage"
+          >
+            {{ name | capitalize }} ({{ language.encounters.length }})
+          </option>
+        </select>
+      </header>
+      <ul>
+        <li v-for="encounter in languages[currentLanguage].encounters">
+          <router-link :to=encounterURI(encounter) class="encounter_synopsis">
+            <ul>
               <li>
-                <strong>{{ encounter.title | truncate(70) }}</strong>
+                <strong>{{ encounter.title | truncate(45) }}</strong>
               </li>
               <li>
-                <span class="encounter_label">Opener:</span> {{ encounter.opener | truncate(70) }}
+                <span class="encounter_label">
+                  Opener:
+                </span>
+                {{ encounter.opener | truncate(45) }}
               </li>
               <li>
-                <span class="encounter_label">Date:</span> {{ encounter.date }}
+                <span class="encounter_label">
+                  Date:
+                </span>
+                {{ encounter.date }}
               </li>
               <li>
-                <span class="encounter_label">Duration:</span> {{ encounter.duration }}s
+                <span class="encounter_label">
+                  Duration:
+                </span>
+                {{ encounter.duration }}s
               </li>
             </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div class="language_list">
-      <ul>
-        <li v-for="(language, name) in languages">
-          <a
-            v-on:click="changeLanguage(name)"
-            :class="{ 'active_language': name == current_language }"
-          >
-            {{ name }} ({{ language.encounters.length }})
-          </a>
+          </router-link>
         </li>
       </ul>
     </div>
+    <footer>
+      &middot;
+      <a href="https://flrmethod.com/">
+        Lao Shu's teaching website
+      </a>
+      &middot;
+      <a href="http://tombh.co.uk">
+        Made by tombh.co.uk
+      </a>
+      &middot;
+      <a href="https://github.com/tombh/laoup-website">
+        Github repo
+      </a>
+      &middot;
+    </footer>
   </div>
 </template>
 
@@ -55,26 +79,55 @@ import languageEncounters from '../../static/encounters.json';
 export default {
   name: 'encounters',
   data: () => ({
-    loading: 'Loading...',
     languages: languageEncounters,
-    current_youtube_embed: '',
-    current_encounter_id: '',
-    current_language: 'mandarin',
+    currentEncounter: {},
+    currentYoutubeEmbed: '',
+    currentLanguage: 'mandarin',
   }),
   created() {
-    this.changeEncounter(this.languages.mandarin.encounters[0]);
+    this.onRouteChange();
+  },
+  watch: {
+    $route() {
+      this.onRouteChange();
+    },
   },
   methods: {
-    changeLanguage(language) {
-      this.current_language = language;
+    changeLanguage(event) {
+      this.currentLanguage = event.target.value;
     },
-    encounterID(encounter) {
-      return `${encounter.video_id}?start=${encounter.start}`;
+    onRouteChange() {
+      if (typeof this.$route.params.video === 'undefined') {
+        this.onNoVideo();
+      } else {
+        this.loadVideo(this.$route.params);
+      }
     },
-    changeEncounter(encounter) {
+    onNoVideo() {
+      const first = this.languages.mandarin.encounters[0];
+      const firstURI = this.encounterURI(first);
+      this.$router.push(firstURI);
+    },
+    loadVideo(params) {
+      this.currentLanguage = params.language;
+      const candidates = this.languages[this.currentLanguage].encounters;
+      this.currentEncounter = candidates.find(
+        (encounter) => {
+          const isVideoMatch = encounter.video_id === params.video;
+          const isTimestampMatch = encounter.start.toString() === params.start;
+          return isVideoMatch && isTimestampMatch;
+        },
+      );
+      this.setYoutubeEmbed();
+    },
+    setYoutubeEmbed() {
+      const encounter = this.currentEncounter;
       const subs = 'cc_load_policy=1&cc_lang_pref=en';
-      this.current_encounter_id = this.encounterID(encounter);
-      this.current_youtube_embed = `https://youtube.com/embed/${this.current_encounter_id}&${subs}`;
+      const videoWithStart = `${encounter.video_id}?start=${encounter.start}`;
+      this.currentYoutubeEmbed = `https://youtube.com/embed/${videoWithStart}&${subs}`;
+    },
+    encounterURI(encounter) {
+      return `/${this.currentLanguage}/${encounter.video_id}/${encounter.start}`;
     },
   },
 };
@@ -99,11 +152,11 @@ li {
 a {
   color: #B57D40;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.wrapper {
-  width: 1000px;
-  margin: auto;
+footer a:hover {
+  color: #B57D4075;
 }
 
 .logo {
@@ -114,13 +167,50 @@ h1 {
   float: left;
 }
 
-.main {
-  width: 800px;
+h2 {
   float: left;
+}
+
+.main {
+  max-width: 800px;
+  margin: auto;
+}
+
+footer {
+  text-align: center;
+}
+
+header select {
+  float: right;
+}
+
+.title {
+  overflow: hidden;
+  text-align: center;
+  margin-bottom: 1em;
+}
+
+.iframe_wrapper {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+}
+iframe {
+  border-top: 2px solid #B57D40;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .current_language h2 {
   text-transform: capitalize;
+}
+
+.current_language > ul {
+  text-align: center;
 }
 
 .encounter_label {
@@ -129,34 +219,41 @@ h1 {
 
 .encounter_synopsis {
   display: inline-block;
-  width: 200px;
-  height: 145px;
+  width: 245px;
+  height: 130px;
   float: left;
   text-align: left;
   cursor: pointer;
+  border-top: 2px solid white;
+  padding-top: 5px;
+  margin-top: 5px;
+}
+
+.encounter_synopsis li {
+  display: block;
+}
+
+.encounter_synopsis:hover,
+.encounter_synopsis.router-link-active {
+  border-top: 2px solid #B57D40;
+}
+.encounter_synopsis:hover {
+  background-color: #F1E1C750;
+}
+.encounter_synopsis.router-link-active {
+  background-color: #F1E1C7;
+}
+.encounter_synopsis:visited {
+  color: grey;
 }
 
 .language_list {
-  width: 200px;
-  float: right;
+  overflow: hidden;
 }
 
-.language_list li {
-  display: block;
-  text-align: left;
-  text-transform: capitalize;
-}
-
-.language_list li a {
-  display: block;
-  padding: 5px 0 5px 5px;
-}
-
-.language_list li a:hover,
-.language_list li a.active_language,
-.encounter_synopsis:hover,
-.encounter_synopsis.currently_viewing {
-  background-color: #F1E1C7;
+.language_list select {
+  margin-top: 10px;
+  margin-left: 10px;
 }
 
 </style>
